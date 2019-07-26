@@ -4,8 +4,8 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.*;
-//import org.apache.log4j.Logger;
-//import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
+import org.apache.log4j.LogManager;
 
 /**
  * @CLassName DynamicThreadPool
@@ -24,6 +24,7 @@ public class DynamicThreadPool<Job extends Runnable>{
     public ThreadPoolExecutor threadPool;
     OperatingSystemMXBean bean;
     Timer timer;
+    private static Logger logger = Logger.getLogger(DynamicThreadPool.class);
     /*
     *
     * @Param minthread : min number of threads in this DynamicThreadPool
@@ -39,6 +40,7 @@ public class DynamicThreadPool<Job extends Runnable>{
         minThreads = minthread;
         maxThreads = maxthread;
         curThreads = minThreads;
+        Logger logger = Logger.getLogger(DynamicThreadPool.class);
         updatePeriod = period;
         timer = new Timer();
         timer.schedule(new ThreadTask(), 100, updatePeriod);
@@ -50,7 +52,8 @@ public class DynamicThreadPool<Job extends Runnable>{
     }
 
     public void printInfo(){
-        System.out.println("CPU Utilization : " + procUtil);
+        logger.info("CPU Utilization : " + procUtil);
+        //System.out.println("CPU Utilization : " + procUtil);
         System.out.println("Current size of thread pool : " + curThreads);
     }
 
@@ -119,8 +122,10 @@ public class DynamicThreadPool<Job extends Runnable>{
     public static void main(String[] args){
         BlockingQueue queue = new ArrayBlockingQueue<>(500);
         DynamicThreadPool test = new DynamicThreadPool(2,5, 2000, queue);
+
         for(int i = 0; i < 1000; i++){
-            System.out.println(" Task " + test.threadPool.getTaskCount() + " inserted to the queue");
+            logger.info(" Task " + test.threadPool.getTaskCount() + " inserted to the queue");
+            //System.out.println(" Task " + test.threadPool.getTaskCount() + " inserted to the queue");
             try{
                 Thread.sleep((int)(Math.random() * 20) + 20);
                 test.execute(new RealTask(i));
