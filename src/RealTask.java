@@ -15,7 +15,7 @@ public class RealTask implements Runnable {
 
     @Override
     public void run(){
-        //System.out.println("Task " + taskID + " is running");
+        System.out.println("Task " + taskID + " is running");
 
         for(int i = 0; i< 500000; i++){
             double a = Math.random() * 10000;
@@ -23,7 +23,6 @@ public class RealTask implements Runnable {
             double res = a * b;
 
         }
-
-        //System.out.println("Task " + taskID + " is done");
+        System.out.println("Task " + taskID + " is done");
     }
 }

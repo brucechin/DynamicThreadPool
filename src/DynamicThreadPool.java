@@ -1,11 +1,11 @@
 import com.sun.management.OperatingSystemMXBean;
-
 import java.lang.management.ManagementFactory;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.*;
-import org.apache.log4j.Logger;
-import org.apache.log4j.LogManager;
+//import org.apache.log4j.Logger;
+//import org.apache.log4j.LogManager;
 
 /**
  * @CLassName DynamicThreadPool
@@ -15,31 +15,45 @@ import org.apache.log4j.LogManager;
  * @Version 1.0
  **/
 public class DynamicThreadPool<Job extends Runnable>{
-    int numProcessors;
-    double procUtil;//usage percentage of all processors
-    int minThreads;
-    int maxThreads;
-    int curThreads;
-    int updatePeriod;//run updateWorkers per period
+    private int numProcessors;
+    private double procUtil;//utilization percentage of all processors
+    private int minThreads;
+    private int maxThreads;
+    private int curThreads;//current number of threads
+    private int updatePeriod;//run updateWorkers() once per period
     public ThreadPoolExecutor threadPool;
     OperatingSystemMXBean bean;
     Timer timer;
-    public DynamicThreadPool(int minthread, int maxthread, BlockingQueue queue){
+    /*
+    *
+    * @Param minthread : min number of threads in this DynamicThreadPool
+    * @Param maxthread : max number of threads in this DynamicThreadPool
+    * @Param period : run updateWorkers() every period milliseconds
+    * @Param queue : used to init the waiting queue in ThreadPool
+    *
+    * */
+    public DynamicThreadPool(int minthread, int maxthread, int period, BlockingQueue queue){
         bean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
         numProcessors = bean.getAvailableProcessors();
         procUtil = bean.getSystemCpuLoad();
         minThreads = minthread;
         maxThreads = maxthread;
         curThreads = minThreads;
+        updatePeriod = period;
         timer = new Timer();
-        timer.schedule(new ThreadTask(), 100, 1000);
+        timer.schedule(new ThreadTask(), 100, updatePeriod);
+        threadPool = new ThreadPoolExecutor(minThreads, maxThreads, 10000, TimeUnit.MILLISECONDS, queue);
+    }
 
-        threadPool = new ThreadPoolExecutor(minThreads, maxThreads, 1000, TimeUnit.MILLISECONDS, queue);
+    public void setUpdatePeriod(int period){
+        updatePeriod = period;
     }
 
     public void printInfo(){
-
+        System.out.println("CPU Utilization : " + procUtil);
+        System.out.println("Current size of thread pool : " + curThreads);
     }
+
     public void updateWorkers(){
 
         procUtil = bean.getSystemCpuLoad();
@@ -48,51 +62,81 @@ public class DynamicThreadPool<Job extends Runnable>{
             curThreads = minThreads + (int) ((maxThreads - minThreads) * (1 - procUtil));
             threadPool.setCorePoolSize(curThreads);
         }
-        System.out.println("CPU util " + procUtil + " curWorkers " + threadPool.getCorePoolSize());
     }
 
     public void execute(Job j){
         threadPool.execute(j);
     }
 
+    public long getCompletedTaskCount(){
+        return threadPool.getCompletedTaskCount();
+    }
+
     public long getTaskCount(){
-        return 0;
-        //return threadPool.getTaskCount();
+        return threadPool.getTaskCount();
+    }
+
+    public int getPoolSize(){
+        return threadPool.getPoolSize();
     }
 
     public void shutdown(){
         timer.cancel();
         threadPool.shutdown();
-        System.out.println("Dynamic thread pool shutdown");
+        System.out.println("Dynamic thread pool is shutting down");
     }
 
+    public boolean isShutdown(){
+        return threadPool.isShutdown();
+    }
+
+    public int getMaxThreads(){
+        return maxThreads;
+    }
+
+    public int getMinThreads(){
+        return minThreads;
+    }
+
+    public void setMinThreads(int minthreads){
+        minThreads = minthreads;
+    }
+
+    public void setMaxThreads(int maxthreads){
+        maxThreads = maxthreads;
+    }
     public class ThreadTask extends TimerTask{
         public ThreadTask(){
-
         }
 
         @Override
         public void run(){
             updateWorkers();
+            printInfo();
         }
     }
 
     public static void main(String[] args){
-        Logger logger = LogManager.getLogger("ThreadPool");
-        BlockingQueue queue = new ArrayBlockingQueue<>(1000);
-        DynamicThreadPool test = new DynamicThreadPool(1,1, queue);
+        BlockingQueue queue = new ArrayBlockingQueue<>(500);
+        DynamicThreadPool test = new DynamicThreadPool(2,5, 2000, queue);
         for(int i = 0; i < 1000; i++){
-            //System.out.println(test.threadPool.getTaskCount());
+            System.out.println(" Task " + test.threadPool.getTaskCount() + " inserted to the queue");
             try{
-                Thread.sleep(10);
+                Thread.sleep((int)(Math.random() * 20) + 20);
                 test.execute(new RealTask(i));
-                logger.info("thread" + i +" init");
             }catch (Exception e){
                 e.printStackTrace();
             }
 
         }
-        //test.shutdown();
+        try{
+            Thread.sleep(10000);
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            test.shutdown();
+        }
+
     }
 
 }
